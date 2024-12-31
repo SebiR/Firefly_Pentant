@@ -1,19 +1,29 @@
+#ifdef F_CPU
+  #undef F_CPU
+  #define F_CPU 31250UL
+#endif
+
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
 #include <util/delay.h>
 
+
+
 #define LED_PIN PB0     // LED connected to PB0
 #define BUTTON_PIN PB2  // Button connected to PB2
 
-volatile uint8_t button_pressed = 0;  // Flag to track button press
 
-//uint32_t blink_pattern = 0b11001100110011001100110011001100;
-//uint32_t blink_pattern = 0b01010101010101010101010101010101;
+// uncomment if you want to manually calibrate the internal clock (WDT clock is independent)
+//#define CLOCKCAL
+
+volatile uint8_t button_pressed = 0;  // Flag to track button press
 
 // Blink pattern. Each bit is checked with every watch-dog interrupt (currently every ~125ms) and the LED is set according to the bit status
 // So 32bit are roughly 4 seconds of pattern
-uint32_t blink_pattern = 0b10010010000000010010001000000000;
+//uint32_t blink_pattern = 0b11001100110011001100110011001100;
+//uint32_t blink_pattern = 0b01010101010101010101010101010101;
+uint32_t blink_pattern = 0b10100100000000100100010000000000;
 
 void setupWDT() {
   // Disable interrupts
@@ -41,6 +51,21 @@ void setup() {
   PCICR |= (1 << PCIE0);       // Enable pin change interrupt
   PCMSK |= (1 << BUTTON_PIN);  // Enable interrupt on PB2
 
+  ADCSRA &= ~(1 << ADEN);  // Disable ADC
+
+  CCP = 0xD8;                                                              // Unprotect CLKPSR reg
+  CLKPSR = (1 << CLKPS3) | (0 << CLKPS2) | (0 << CLKPS1) | (0 << CLKPS0);  // Set clock to 31.25kHz
+  //OSCCAL = 0x96;    // Adjust clock if you want to
+
+// LED 100ms on and off, can be used to calibrate OSCCAL
+#ifdef CLOCKCAL
+  while (1) {
+    PORTB |= (1 << LED_PIN);
+    _delay_ms(100);
+    PORTB &= ~(1 << LED_PIN);
+    _delay_ms(100);
+  }
+#endif
 
   setupWDT();
 
