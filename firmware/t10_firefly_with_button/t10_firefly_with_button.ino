@@ -8,11 +8,8 @@
 #include <avr/sleep.h>
 #include <util/delay.h>
 
-
-
 #define LED_PIN PB0     // LED connected to PB0
 #define BUTTON_PIN PB2  // Button connected to PB2
-
 
 // uncomment if you want to manually calibrate the internal clock (WDT clock is independent)
 //#define CLOCKCAL
@@ -86,7 +83,6 @@ ISR(PCINT0_vect) {
 }
 
 ISR(WDT_vect) {
-
   static uint8_t current_bit = 0;  // Track the current bit position
 
   // Extract the current bit from the pattern
@@ -105,8 +101,6 @@ ISR(WDT_vect) {
     current_bit = 0;  // Wrap around to the start of the pattern
   }
 }
-
-
 
 void loop() {
   // Check if button was pressed
