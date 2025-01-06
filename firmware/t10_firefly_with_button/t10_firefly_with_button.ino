@@ -1,6 +1,6 @@
 #ifdef F_CPU
-  #undef F_CPU
-  #define F_CPU 31250UL
+#undef F_CPU
+#define F_CPU 32000UL
 #endif
 
 #include <avr/io.h>
@@ -8,7 +8,8 @@
 #include <avr/sleep.h>
 #include <util/delay.h>
 
-#define LED_PIN PB0     // LED connected to PB0
+#define LED1_PIN PB0    // LED connected to PB0
+#define LED2_PIN PB1    // LED connected to PB0
 #define BUTTON_PIN PB2  // Button connected to PB2
 
 // uncomment if you want to manually calibrate the internal clock (WDT clock is independent)
@@ -26,8 +27,7 @@ void setupWDT() {
   // Disable interrupts
   cli();
 
-  // Reset the watchdog timer control register
-  //CCP = 0xD8;                                                                                 // Enable confic changes
+  CCP = 0xD8;                                                                                 // Enable confic changes
   WDTCSR = (1 << WDIE) | (0 << WDE) | (0 << WDP3) | (0 << WDP2) | (1 << WDP1) | (1 << WDP0);  // Enable WDT every ~125ms
 
   // Re-enable interrupts
@@ -35,31 +35,35 @@ void setupWDT() {
 }
 
 void setup() {
-  // Configure PB0 as output for LED
-  DDRB |= (1 << LED_PIN);
-  PORTB &= ~(1 << LED_PIN);  // Start with LED off
+  // Configure LED pins as outputs
+  DDRB |= (1 << LED1_PIN) | (1 << LED2_PIN);
+  PORTB &= ~(1 << LED1_PIN) | ~(1 << LED2_PIN);  // Start with LED off
 
   // Configure PB2 as input with internal pull-up for button
   DDRB &= ~(1 << BUTTON_PIN);  // Set PB2 as input
   PUEB |= (1 << BUTTON_PIN);   // Enable pull-up resistor on PB2
 
   // Enable pin change interrupt for PB2
-
   PCICR |= (1 << PCIE0);       // Enable pin change interrupt
   PCMSK |= (1 << BUTTON_PIN);  // Enable interrupt on PB2
 
+  // Disable unused peripherals to save more power
   ADCSRA &= ~(1 << ADEN);  // Disable ADC
+  ACSR |= (1 << ACD);      // Disable Analog Comparator
+
+  CCP = 0xD8;                              // Unprotect CLKMSR reg
+  CLKMSR = (0 << CLKMS1) | (1 << CLKMS0);  // Set Clock source to 128kHz WDT oscillator
 
   CCP = 0xD8;                                                              // Unprotect CLKPSR reg
-  CLKPSR = (1 << CLKPS3) | (0 << CLKPS2) | (0 << CLKPS1) | (0 << CLKPS0);  // Set clock to 31.25kHz
-  //OSCCAL = 0x96;    // Adjust clock if you want to
+  CLKPSR = (0 << CLKPS3) | (0 << CLKPS2) | (1 << CLKPS1) | (0 << CLKPS0);  // Divide Clock by 4 -> 32kHz
+  OSCCAL = 0x96;                                                           // Adjusts int. RC clock, irrelevant, as we're using the WDT clock
 
 // LED 100ms on and off, can be used to calibrate OSCCAL
 #ifdef CLOCKCAL
   while (1) {
-    PORTB |= (1 << LED_PIN);
+    PORTB |= (1 << LED1_PIN);
     _delay_ms(100);
-    PORTB &= ~(1 << LED_PIN);
+    PORTB &= ~(1 << LED1_PIN);
     _delay_ms(100);
   }
 #endif
@@ -73,6 +77,7 @@ void setup() {
   sei();
 }
 
+// Pin Change Interrupt for the mode button
 ISR(PCINT0_vect) {
   // Debounce the button
   _delay_ms(500);
@@ -82,6 +87,7 @@ ISR(PCINT0_vect) {
   }
 }
 
+// Watchdog Trigger Interrupt
 ISR(WDT_vect) {
   static uint8_t current_bit = 0;  // Track the current bit position
 
@@ -90,9 +96,9 @@ ISR(WDT_vect) {
 
   // Set or clear the LED based on the bit value
   if (bit_state) {
-    PORTB |= (1 << LED_PIN);  // Turn on the LED
+    PORTB |= (1 << LED1_PIN);  // Turn on the LED
   } else {
-    PORTB &= ~(1 << LED_PIN);  // Turn off the LED
+    PORTB &= ~(1 << LED1_PIN);  // Turn off the LED
   }
 
   // Move to the next bit
@@ -111,7 +117,7 @@ void loop() {
     WDTCSR ^= (1 << WDIE);
 
     // LED off
-    PORTB &= ~(1 << LED_PIN);
+    PORTB &= ~(1 << LED1_PIN);
 
     // Add a small delay to debounce further presses
     _delay_ms(50);
