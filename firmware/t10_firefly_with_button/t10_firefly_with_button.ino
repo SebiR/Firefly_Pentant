@@ -51,6 +51,8 @@ void setup() {
   ADCSRA &= ~(1 << ADEN);  // Disable ADC
   ACSR |= (1 << ACD);      // Disable Analog Comparator
 
+  PRR = (1 << PRADC) | (1 << PRTIM0);  // Shut down ADC and Timer0
+
   CCP = 0xD8;                              // Unprotect CLKMSR reg
   CLKMSR = (0 << CLKMS1) | (1 << CLKMS0);  // Set Clock source to 128kHz WDT oscillator
 
