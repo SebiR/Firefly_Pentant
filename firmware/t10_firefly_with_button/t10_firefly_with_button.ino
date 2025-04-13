@@ -23,18 +23,14 @@ volatile uint8_t button_pressed = 0;  // Flag to track button press
 //uint32_t blink_pattern = 0b01010101010101010101010101010101;
 uint32_t blink_pattern = 0b10100100000000100100010000000000;
 
-void setupWDT() {
+void setup() {
   // Disable interrupts
   cli();
 
+  // Configure Watchdog Timer to trigger every ~125ms
   CCP = 0xD8;                                                                                 // Enable confic changes
   WDTCSR = (1 << WDIE) | (0 << WDE) | (0 << WDP3) | (0 << WDP2) | (1 << WDP1) | (1 << WDP0);  // Enable WDT every ~125ms
 
-  // Re-enable interrupts
-  sei();
-}
-
-void setup() {
   // Configure LED pins as outputs
   DDRB |= (1 << LED1_PIN) | (1 << LED2_PIN);
   PORTB &= ~(1 << LED1_PIN) | ~(1 << LED2_PIN);  // Start with LED off
@@ -60,6 +56,9 @@ void setup() {
   CLKPSR = (0 << CLKPS3) | (0 << CLKPS2) | (1 << CLKPS1) | (0 << CLKPS0);  // Divide Clock by 4 -> 32kHz
   OSCCAL = 0x96;                                                           // Adjusts int. RC clock, irrelevant, as we're using the WDT clock
 
+  // enable global interrupts
+  sei();
+
 // LED 100ms on and off, can be used to calibrate OSCCAL
 #ifdef CLOCKCAL
   while (1) {
@@ -69,8 +68,6 @@ void setup() {
     _delay_ms(100);
   }
 #endif
-
-  setupWDT();
 
   // Set up sleep mode to power down
   set_sleep_mode(SLEEP_MODE_PWR_DOWN);
